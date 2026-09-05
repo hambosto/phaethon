@@ -12,7 +12,6 @@ impl Default for Color {
 }
 
 impl Color {
-    #[inline]
     pub fn new(l: f64, chroma: f64, hue: f64) -> Self {
         Self { l, chroma, hue: hue.rem_euclid(360.0) }
     }
@@ -28,7 +27,7 @@ impl Color {
 
     pub fn to_hex(self) -> String {
         let (r, g, b) = self.to_srgb();
-        format!("{r:02x}{g:02x}{b:02x}")
+        hex::encode([r, g, b])
     }
 }
 

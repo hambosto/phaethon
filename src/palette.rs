@@ -1,3 +1,7 @@
+use std::collections::BTreeMap;
+
+use anyhow::{Context, Result};
+
 use crate::cluster::{ClusteringResult, NUM_CLUSTERS, Swatch};
 use crate::color::Color;
 
@@ -21,6 +25,7 @@ impl Palette {
         for (slot, &l) in colors[..6].iter_mut().zip(&BG_LIGHTNESS) {
             *slot = Color::new(l, zones.dominant.chroma / 2.0, zones.dominant.hue);
         }
+
         colors[6] = Color::new(FG_LIGHTNESS, lighter.chroma / 2.0, lighter.hue);
         colors[7] = Color::new(BRIGHT_BG_LIGHTNESS, darker.chroma / 2.0, darker.hue);
         colors[8..].copy_from_slice(&accents);
@@ -28,16 +33,9 @@ impl Palette {
         Self(colors)
     }
 
-    pub fn to_json_value(&self) -> serde_json::Value {
-        let mut map = serde_json::Map::new();
-        for (label, &color) in LABELS.iter().zip(&self.0) {
-            map.insert((*label).to_string(), serde_json::Value::String(color.to_hex()));
-        }
-        serde_json::Value::Object(map)
-    }
-
-    pub fn to_json_string(&self) -> anyhow::Result<String> {
-        Ok(serde_json::to_string_pretty(&self.to_json_value())?)
+    pub fn to_json(&self) -> Result<String> {
+        let map: BTreeMap<&str, String> = LABELS.iter().copied().zip(self.0.iter().copied().map(Color::to_hex)).collect();
+        serde_json::to_string_pretty(&map).context("failed to serialize palette")
     }
 }
 
@@ -180,6 +178,7 @@ fn zone_weighted_average(zone: &[(usize, &Swatch)]) -> Color {
         let w = sw.pixel_count as f64 / total;
         l_sum += sw.color.l * w;
         ch_sum += sw.color.chroma * w;
+
         let rad = sw.color.hue.to_radians();
         cos_sum += rad.cos() * w;
         sin_sum += rad.sin() * w;

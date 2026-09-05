@@ -45,7 +45,7 @@ fn main() -> Result<()> {
     let pixels = load_pixels(&args.image, args.resize)?;
     let result = ClusteringResult::from_pixels(&pixels);
     let palette = Palette::from_clusters(&result, args.contrast);
-    let json = palette.to_json_string().context("failed to serialize palette")?;
+    let json = palette.to_json()?;
 
     match args.output {
         Some(out) => std::fs::write(&out, json).context("failed to write output")?,
