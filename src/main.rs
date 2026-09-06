@@ -6,10 +6,9 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use image::imageops::FilterType;
-
 use cluster::ClusteringResult;
 use color::image_to_oklch_pixels;
+use image::imageops::FilterType;
 use palette::Palette;
 
 #[derive(Parser)]
