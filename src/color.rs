@@ -60,7 +60,7 @@ pub fn oklch_to_srgb(l: f64, chroma: f64, hue: f64) -> [u8; 3] {
 
 pub fn image_to_oklch_pixels(image: &RgbImage) -> Vec<[f64; 3]> {
     let mut pixels = Vec::with_capacity(image.as_raw().len() / 3);
-    for channels in image.as_raw().chunks_exact(3) {
+    for channels in image.as_raw().as_chunks::<3>().0 {
         let (l, chroma, hue) = srgb_to_oklch(channels[0], channels[1], channels[2]);
         pixels.push([l, chroma, hue]);
     }

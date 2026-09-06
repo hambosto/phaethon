@@ -66,7 +66,7 @@ fn main() -> Result<()> {
 
     let output = generate_palette(&cli.image, cli.contrast, cli.resize)?;
     match &cli.output {
-        Some(path) => std::fs::write(&path, output).context("failed to write output")?,
+        Some(path) => std::fs::write(path, output).context("failed to write output")?,
         None => println!("{output}"),
     }
 
