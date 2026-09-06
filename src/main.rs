@@ -8,11 +8,11 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use image::imageops::FilterType;
 
-use crate::cluster::ClusteringResult;
-use crate::color::Color;
-use crate::palette::Palette;
+use cluster::ClusteringResult;
+use color::image_to_oklch_pixels;
+use palette::Palette;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(name = "phaethon", version, about = "Extract base16 color palettes from images using Oklch perceptual clustering")]
 struct Cli {
     /// Path to source image
@@ -32,24 +32,43 @@ struct Cli {
     output: Option<PathBuf>,
 }
 
-fn load_pixels(path: &Path, resize: u32) -> Result<Vec<Color>> {
-    let img = image::open(path).context("failed to open image")?;
-    let rgb = if resize == 0 { img.into_rgb8() } else { img.resize_exact(resize, resize, FilterType::Nearest).into_rgb8() };
-    let pixels = rgb.pixels().map(|p| Color::from_srgb(p[0], p[1], p[2])).collect();
+fn load_pixels(path: &Path, resize: u32) -> Result<Vec<[f64; 3]>> {
+    let image = image::open(path).context("failed to open image")?;
+    let resized = image.resize_exact(resize, resize, FilterType::Nearest);
+    let rgb = resized.into_rgb8();
+    let pixels = image_to_oklch_pixels(&rgb);
 
     Ok(pixels)
 }
 
-fn main() -> Result<()> {
-    let args = Cli::parse();
-    let pixels = load_pixels(&args.image, args.resize)?;
-    let result = ClusteringResult::from_pixels(&pixels);
-    let palette = Palette::from_clusters(&result, args.contrast);
-    let json = palette.to_json()?;
+pub fn generate_palette(path: &Path, contrast: f64, resize: u32) -> Result<String> {
+    let pixels = load_pixels(path, resize)?;
+    let clustering = ClusteringResult::from_pixels(pixels)?;
+    let palette = Palette::from_clusters(&clustering, contrast)?;
+    let json = serde_json::to_string_pretty(&palette.to_map())?;
 
-    match args.output {
-        Some(out) => std::fs::write(&out, json).context("failed to write output")?,
-        None => println!("{json}"),
+    Ok(json)
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    if !cli.image.is_file() {
+        anyhow::bail!("no such file: {}", cli.image.display());
+    }
+
+    if !(0.0..=1.0).contains(&cli.contrast) {
+        anyhow::bail!("contrast must be between 0.0 and 1.0");
+    }
+
+    if cli.resize == 0 {
+        anyhow::bail!("resize must be a positive integer");
+    }
+
+    let output = generate_palette(&cli.image, cli.contrast, cli.resize)?;
+    match &cli.output {
+        Some(path) => std::fs::write(&path, output).context("failed to write output")?,
+        None => println!("{output}"),
     }
 
     Ok(())
